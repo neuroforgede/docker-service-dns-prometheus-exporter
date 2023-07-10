@@ -78,6 +78,7 @@ print(service_endpoints_by_network)
 # 1. go to every node using the network map we just constructed
 # 2. for every container on the host do
 # 2.1 for every network it is part of do
-# 2.1.1 check every service that should be found from inside the container with getent hosts
-#       and whether the IP matches
+# 2.1.1 check every service that should be found from inside the container
+#       and whether the IP matches via a script from inside the netns
+#       docker run --rm --net=container:<target container> myimage:tag my_script.py --args
 # 2.1.2 if its not, mark container as unhealthy w.r.t DNS
