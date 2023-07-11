@@ -2,6 +2,7 @@
 import docker
 from typing import Dict, List, TypeVar, Callable
 from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 from functools import reduce
 from collections import defaultdict
 
@@ -15,6 +16,7 @@ def group_by(key: Callable[[T], K], seq: List[T]) -> Dict[K, List[T]]:
 from_env = docker.from_env(use_ssh_client=True)
 services = from_env.services.list()
 
+@dataclass_json
 @dataclass
 class ServiceEndpoint:
   service_id: str
