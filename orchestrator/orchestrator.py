@@ -35,7 +35,7 @@ class NetworkAlias:
 
 def dump_as_json_string(input: Dict[str, List[ServiceEndpoint]]) -> Dict[str, List[Any]]:
   as_dict = {k: [elem.to_dict() for elem in v] for k,v in input.items()}
-  return json.dumps(as_dict)
+  return json.dumps(as_dict, indent=4)
 
 network_endpoints: List[ServiceEndpoint] = []
 network_aliases: List[NetworkAlias] = []
@@ -78,13 +78,25 @@ for service in services:
         ))
 
 
+# 1. get all service endpoints per network
 service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
 service_endpoints_by_network_as_json_string = dump_as_json_string(service_endpoints_by_network)
 print(service_endpoints_by_network_as_json_string)
 
-# next step: construct list of things a service should see
+# 2. get all service endpoints a service should reach
+service_endpoints_by_service = group_by(lambda x: x.service_id, network_endpoints)
+service_endpoints_service_should_reach: Dict[str, List[ServiceEndpoint]] = defaultdict(list)
+for service_id, network_endpoints_for_service in service_endpoints_by_service.items():
+  for elem in network_endpoints_for_service:
+    for service_endpoint in service_endpoints_by_network[elem.network_id]:
+      service_endpoints_service_should_reach[service_id].append(service_endpoint)
 
-#TODO
+print(dump_as_json_string(service_endpoints_service_should_reach))
+
+# careful: this relies on the network we are testing to see if it works
+# TODO: find a better way to handle this
+# 3. discover all docker hosts via swarm proxy
+
 
 # next steps:
 # 1. go to every node using the network map we just constructed
