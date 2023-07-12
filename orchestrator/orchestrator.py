@@ -77,10 +77,10 @@ for service in services:
           aliases=[item for alias in aliases for item in alias.aliases]
         ))
 
-service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
 
-as_json_string = dump_as_json_string(service_endpoints_by_network)
-print(as_json_string)
+service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
+service_endpoints_by_network_as_json_string = dump_as_json_string(service_endpoints_by_network)
+print(service_endpoints_by_network_as_json_string)
 
 # next steps:
 # 1. go to every node using the network map we just constructed
