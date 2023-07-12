@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/python3
 import docker
 from typing import Dict, List, TypeVar, Callable
 from dataclasses import dataclass
