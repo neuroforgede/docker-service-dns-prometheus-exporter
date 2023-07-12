@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 import docker
-from typing import Dict, List, TypeVar, Callable
+from typing import Dict, List, TypeVar, Callable, Any
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from functools import reduce
 from collections import defaultdict
+import json
 
 T = TypeVar('T')
 K = TypeVar('K')
@@ -32,6 +33,9 @@ class NetworkAlias:
   network_id: str
   aliases: List[str]
 
+def dump_as_json_string(input: Dict[str, List[ServiceEndpoint]]) -> Dict[str, List[Any]]:
+  as_dict = {k: [elem.to_dict() for elem in v] for k,v in input.items()}
+  return json.dumps(as_dict)
 
 network_endpoints: List[ServiceEndpoint] = []
 network_aliases: List[NetworkAlias] = []
@@ -74,8 +78,9 @@ for service in services:
         ))
 
 service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
-as_json = ServiceEndpoint.schema().dumps(service_endpoints_by_network.values(), many=True)
-print(as_json)
+
+as_json_string = dump_as_json_string(service_endpoints_by_network)
+print(as_json_string)
 
 # next steps:
 # 1. go to every node using the network map we just constructed
