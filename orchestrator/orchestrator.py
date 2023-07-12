@@ -82,6 +82,10 @@ service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoint
 service_endpoints_by_network_as_json_string = dump_as_json_string(service_endpoints_by_network)
 print(service_endpoints_by_network_as_json_string)
 
+# next step: construct list of things a service should see
+
+#TODO
+
 # next steps:
 # 1. go to every node using the network map we just constructed
 # 2. for every container on the host do
