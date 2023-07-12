@@ -27,6 +27,6 @@ def can_find_dns_entry(dns_entry: str) -> bool:
     return False
 
 for service_endpoint_to_find in service_endpoints_to_find:
-    found_dns_tasks = can_find_dns_entry(f'tasks.{service_endpoint_to_find.service_name}')
+    found_dns_tasks = can_find_dns_entry(service_endpoint_to_find.service_name)
     #
         
