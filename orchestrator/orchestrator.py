@@ -74,7 +74,7 @@ for service in services:
         ))
 
 service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
-as_json = ServiceEndpoint.schema().dumps(service_endpoints_by_network, many=True)
+as_json = ServiceEndpoint.schema().dumps(service_endpoints_by_network.values(), many=True)
 print(as_json)
 
 # next steps:
