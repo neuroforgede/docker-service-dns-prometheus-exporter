@@ -26,6 +26,16 @@ class ServiceEndpoint:
   addr: str
   aliases: List[str]
 
+
+@dataclass_json
+@dataclass
+class ContainerNetworkTable:
+  service_id: str
+  service_name: str
+  container_id: str
+  node_id: str
+  service_endpoints_to_reach: List[ServiceEndpoint]
+
 @dataclass
 class NetworkAlias:
   service_id: str
@@ -91,12 +101,42 @@ for service_id, network_endpoints_for_service in service_endpoints_by_service.it
     for service_endpoint in service_endpoints_by_network[elem.network_id]:
       service_endpoints_service_should_reach[service_id].append(service_endpoint)
 
-print(dump_as_json_string(service_endpoints_service_should_reach))
+def get_running_tasks(service):
+  return [
+      task
+      for task in service.tasks()
+      if  "Spec" in task 
+      and "DesiredState" in task
+      and task["DesiredState"] == "running"
+      and "Status" in task
+      and "State" in task["Status"]
+      and task["Status"]["State"] == "running"
+  ]
 
 # careful: this relies on the network we are testing to see if it works
 # TODO: find a better way to handle this
 # 3. discover all docker hosts via swarm proxy
+container_network_tables: List[ContainerNetworkTable] = []
+for service_id, endpoints_to_reach in service_endpoints_service_should_reach.items():
+  service = from_env.services.get(service_id)
+  service_name = service.attrs["Spec"]["Name"]
+  running_tasks = get_running_tasks(service)
+  for task in running_tasks:
+    container_id = task["Status"]["ContainerStatus"]["ContainerID"]
+    node_id = task["NodeID"]
+    container_network_tables.append(ContainerNetworkTable(
+      service_id=service_id,
+      service_name=service_name,
+      container_id=container_id,
+      node_id=node_id,
+      service_endpoints_to_reach=list(endpoints_to_reach)
+    ))
 
+
+
+print(ContainerNetworkTable.schema().dumps(container_network_tables, indent=4, many=True))
+
+# next: go to the nodes and run the check
 
 # next steps:
 # 1. go to every node using the network map we just constructed
