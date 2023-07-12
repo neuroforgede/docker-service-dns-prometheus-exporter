@@ -113,8 +113,6 @@ def get_running_tasks(service):
       and task["Status"]["State"] == "running"
   ]
 
-# careful: this relies on the network we are testing to see if it works
-# TODO: find a better way to handle this
 # 3. discover all docker hosts via swarm proxy
 container_network_tables: List[ContainerNetworkTable] = []
 for service_id, endpoints_to_reach in service_endpoints_service_should_reach.items():
@@ -137,6 +135,8 @@ for service_id, endpoints_to_reach in service_endpoints_service_should_reach.ite
 print(ContainerNetworkTable.schema().dumps(container_network_tables, indent=4, many=True))
 
 # next: go to the nodes and run the check
+# careful: this relies on the network we are testing to see if it works
+# TODO: find a better way to handle this
 
 # next steps:
 # 1. go to every node using the network map we just constructed
