@@ -4,4 +4,4 @@ WORKDIR /code
 COPY orchestrator.py orchestrator.py
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
-ENTRYPOINT ["/usr/bin/python3", "-m ", "orchestrator"]
+ENTRYPOINT ["/usr/bin/python3", "-m", "orchestrator"]
