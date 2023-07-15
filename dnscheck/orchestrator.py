@@ -80,8 +80,8 @@ def print_timed(msg):
     print(to_print)
 
 
-PROXY_SERVICE_NAME = 'proxies_socket_proxy'
-DNS_CHECK_CONTAINER_IMAGE = 'dnscheck:debug'
+PROXY_SERVICE_NAME = os.environ['PROXY_SERVICE_NAME']
+DNS_CHECK_CONTAINER_IMAGE = os.getenv('DNS_CHECK_CONTAINER_IMAGE', 'docker pull ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:main')
 
 def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
   ret: List[ContainerNetworkTableResult] = []
