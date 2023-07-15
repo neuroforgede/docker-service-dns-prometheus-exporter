@@ -42,5 +42,8 @@ class ServiceEndpointCheckResult:
 @dataclass_json
 @dataclass
 class ContainerNetworkTableResult:
+  service_id: str
+  service_name: str
   container_id: str
+  node_id: str
   results: List[ServiceEndpointCheckResult]

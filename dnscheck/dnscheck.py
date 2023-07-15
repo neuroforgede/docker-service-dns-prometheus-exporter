@@ -16,8 +16,11 @@ def can_find_dns_entry(dns_entry: str) -> bool:
   return False
 
 result = ContainerNetworkTableResult = ContainerNetworkTableResult(
-   container_id=container_network_table.container_id,
-   results=[]
+  node_id=container_network_table.node_id,
+  service_id=container_network_table.service_id,
+  service_name=container_network_table.service_name,
+  container_id=container_network_table.container_id,
+  results=[]
 )
 
 for service_endpoint_to_find in container_network_table.service_endpoints_to_reach:
