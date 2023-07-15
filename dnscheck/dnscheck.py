@@ -13,7 +13,7 @@ def main() -> None:
 
 
   if DEBUG:
-    print(f"Checking network reachability from {container_network_table.service_name} (service_id: {container_network_table.service_id}, container_id: {container_network_table.container_id})")
+    print(f"Checking network reachability from {container_network_table.service_name} (service_id: {container_network_table.service_id}, container_id: {container_network_table.container_id})", file=sys.stderr)
 
   def can_find_dns_entry(dns_entry: str) -> bool:
     try:
