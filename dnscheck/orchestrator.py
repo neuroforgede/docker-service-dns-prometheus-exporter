@@ -71,6 +71,7 @@ MAX_RETRIES_IN_ROW = int(os.getenv('MAX_RETRIES_IN_ROW', '10'))
 
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 
+KNOWN_LABELS = dict()
 
 def print_timed(msg):
     to_print = '{} [{}]: {}'.format(
@@ -273,13 +274,18 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
 
 
 def loop() -> None:
+  global KNOWN_LABELS
+
   while not exit_event.is_set():
     container_network_table_results = check_dns_in_cluster()
+
+    old_known_labels = KNOWN_LABELS
+    new_known_labels = dict()
 
     for container_network_table_result in container_network_table_results:
       for service_endpoint_check_result in container_network_table_result.results:
         for alias_result in service_endpoint_check_result.alias_results:
-          DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS.labels(**{
+          labels = {
             'docker_hostname': DOCKER_HOSTNAME,
 
             'source_service_id': container_network_table_result.service_id,
@@ -293,9 +299,22 @@ def loop() -> None:
             'target_service_expected_addr': service_endpoint_check_result.expected_addr,
 
             'target_alias_result_alias': alias_result.alias
-          }).set(
+          }
+          frozen_labels = frozenset(labels)
+
+          new_known_labels[frozen_labels] = labels
+
+          DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS.labels(**labels).set(
             1 if alias_result.success else 0
           )
+
+    KNOWN_LABELS = new_known_labels
+
+    labels_to_remove = old_known_labels.keys() - new_known_labels.keys()
+
+    for label_key in labels_to_remove:
+      DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS.remove(**old_known_labels[label_key])
+    
     exit_event.wait(SCRAPE_INTERVAL)
 
 def main() -> None:
