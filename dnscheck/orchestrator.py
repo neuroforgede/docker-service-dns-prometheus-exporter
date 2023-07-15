@@ -183,6 +183,7 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
 
           container_network_tables_for_node_id = container_network_tables_by_node_id[node_id]
           for container_network_table in container_network_tables_for_node_id:
+            print_timed(f'Checking Container {container_network_table.container_id} (service_name={container_network_table.service_name}, service_id={container_network_table.service_id}, container_id={container_network_table.container_id}, node_id={container_network_table.node_id})')
             # print(container_network_tables_for_node_id)
             res = subprocess.run(
               [
