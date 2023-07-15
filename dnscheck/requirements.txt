@@ -2,3 +2,4 @@ dataclasses-json
 docker
 paramiko
 dnspython
+prometheus-client

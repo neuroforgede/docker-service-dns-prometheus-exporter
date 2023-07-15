@@ -37,6 +37,10 @@ class AliasResult:
 @dataclass_json
 @dataclass
 class ServiceEndpointCheckResult:
+  service_id: str
+  service_name: str
+  network_id: str
+  expected_addr: str
   alias_results: List[AliasResult]
 
 @dataclass_json
