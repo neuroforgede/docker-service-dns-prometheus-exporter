@@ -5,7 +5,7 @@ import sys
 from contract import *
 
 def main() -> None:
-  DEBUG = os.environ.get('DEBUG', 'false') == 'true'
+  DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 
   container_network_table_str: str = os.environ['CONTAINER_NETWORK_TABLE']
   container_network_table: ContainerNetworkTable = ContainerNetworkTable.schema().loads(container_network_table_str)

@@ -69,7 +69,7 @@ RETRY_BACKOFF = int(os.getenv('RETRY_BACKOFF', '10'))
 MAX_RETRIES_IN_ROW = int(os.getenv('MAX_RETRIES_IN_ROW', '10'))
 
 
-DEBUG = os.environ.get('DEBUG', 'false') == 'true'
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 
 
 def print_timed(msg):
@@ -81,7 +81,7 @@ def print_timed(msg):
 
 
 PROXY_SERVICE_NAME = os.environ['PROXY_SERVICE_NAME']
-DNS_CHECK_CONTAINER_IMAGE = os.getenv('DNS_CHECK_CONTAINER_IMAGE', 'docker pull ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:main')
+DNS_CHECK_CONTAINER_IMAGE = os.getenv('DNS_CHECK_CONTAINER_IMAGE', 'ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:main')
 
 def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
   ret: List[ContainerNetworkTableResult] = []

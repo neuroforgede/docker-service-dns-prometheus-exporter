@@ -1,5 +1,6 @@
 docker build -f Dockerfile -t dnscheck:debug .
 docker run --env PROXY_SERVICE_NAME=proxies_socket_proxy \
+    --env DEBUG=true \
     --env DNS_CHECK_CONTAINER_IMAGE=dnscheck:debug \
     --rm \
     -it \
