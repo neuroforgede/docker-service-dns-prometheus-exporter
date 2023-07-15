@@ -1,6 +1,7 @@
 import dns.resolver
 import os
 import sys
+import traceback
 
 from contract import *
 
@@ -11,10 +12,15 @@ def main() -> None:
   container_network_table: ContainerNetworkTable = ContainerNetworkTable.schema().loads(container_network_table_str)
 
   def can_find_dns_entry(dns_entry: str) -> bool:
-    answer = dns.resolver.resolve(dns_entry, 'A')
-    for _ in answer:    
-      return True
-    return False
+    try:
+      answer = dns.resolver.resolve(dns_entry, 'A')
+      for _ in answer:    
+        return True
+      return False
+    except dns.resolver.NXDOMAIN:
+      if DEBUG:
+        traceback.print_exc(file=sys.stderr)
+      return False
 
   result = ContainerNetworkTableResult(
     node_id=container_network_table.node_id,
