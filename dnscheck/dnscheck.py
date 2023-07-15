@@ -1,43 +1,39 @@
 import dns.resolver
 import os
-import json
-from dataclasses import dataclass
-from dataclasses_json import dataclass_json
-from typing import List
+import sys
 
-@dataclass_json
-@dataclass
-class ServiceEndpoint:
-  service_id: str
-  service_name: str
-  network_id: str
-  addr: str
-  aliases: List[str]
+from contract import *
 
+DEBUG = os.environ.get('DEBUG', 'false') == 'true'
 
-@dataclass_json
-@dataclass
-class ContainerNetworkTable:
-  service_id: str
-  service_name: str
-  container_id: str
-  node_id: str
-  service_endpoints_to_reach: List[ServiceEndpoint]
+container_network_table_str: str = os.environ['CONTAINER_NETWORK_TABLE']
+container_network_table: ContainerNetworkTable = ContainerNetworkTable.schema().loads(container_network_table_str)
 
+def can_find_dns_entry(dns_entry: str) -> bool:
+  answer = dns.resolver.resolve(dns_entry, 'A')
+  for _ in answer:    
+    return True
+  return False
 
-service_endpoints_to_find_str: str = os.environ['SERVICE_ENDPOINTS_TO_FIND']
+result = ContainerNetworkTableResult = ContainerNetworkTableResult(
+   container_id=container_network_table.container_id,
+   results=[]
+)
 
-service_endpoints_to_find: List[ServiceEndpoint] = ServiceEndpoint.schema().loads(service_endpoints_to_find_str, many=True)
-print(service_endpoints_to_find)
+for service_endpoint_to_find in container_network_table.service_endpoints_to_reach:
+  if DEBUG:
+    print(f"checking: {service_endpoint_to_find.service_name}({service_endpoint_to_find.service_id})", file=sys.stderr)
+  cur_result = ServiceEndpointCheckResult(alias_results=[])
+  for alias in service_endpoint_to_find.aliases:
+    found_dns_tasks = can_find_dns_entry(alias)
+    cur_result.alias_results.append(AliasResult(
+      alias=alias,
+      success=found_dns_tasks,
+      message=None if found_dns_tasks else f"did not find dns entry for {alias}"
+    ))
+    if DEBUG:
+      print(f"{alias}: {found_dns_tasks}", file=sys.stderr)
 
-# def can_find_dns_entry(dns_entry: str) -> bool:
-#     answer = dns.resolver.resolve(dns_entry, 'A')
-#     for _ in answer:    
-#         return True
-#     print(f"didn't find entry for {dns_entry}")
-#     return False
-
-# for service_endpoint_to_find in service_endpoints_to_find:
-#     found_dns_tasks = can_find_dns_entry(service_endpoint_to_find.service_name)
-#     #
+    result.results.append(cur_result)
         
+print(result.to_json())

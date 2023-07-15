@@ -1,2 +1,4 @@
-dnspython
 dataclasses-json
+docker
+paramiko
+dnspython

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import docker
-from typing import Dict, List, TypeVar, Callable, Any
+from typing import Dict, Optional, List, TypeVar, Callable, Any
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from functools import reduce
@@ -9,6 +9,11 @@ import json
 import dns.resolver
 import os
 import traceback
+import subprocess
+
+DEBUG = os.environ.get('DEBUG', 'false') == 'true'
+
+from contract import *
 
 T = TypeVar('T')
 K = TypeVar('K')
@@ -16,35 +21,8 @@ K = TypeVar('K')
 def group_by(key: Callable[[T], K], seq: List[T]) -> Dict[K, List[T]]:
   return reduce(lambda grp, val: grp[key(val)].append(val) or grp, seq, defaultdict(list))
 
-
 from_env = docker.from_env(use_ssh_client=True)
 services = from_env.services.list()
-
-@dataclass_json
-@dataclass
-class ServiceEndpoint:
-  service_id: str
-  service_name: str
-  network_id: str
-  addr: str
-  aliases: List[str]
-
-
-@dataclass_json
-@dataclass
-class ContainerNetworkTable:
-  service_id: str
-  service_name: str
-  container_id: str
-  node_id: str
-  service_endpoints_to_reach: List[ServiceEndpoint]
-
-@dataclass
-class NetworkAlias:
-  service_id: str
-  service_name: str
-  network_id: str
-  aliases: List[str]
 
 def dump_as_json_string(input: Dict[str, List[ServiceEndpoint]]) -> Dict[str, List[Any]]:
   as_dict = {k: [elem.to_dict() for elem in v] for k,v in input.items()}
@@ -94,7 +72,6 @@ for service in services:
 # 1. get all service endpoints per network
 service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
 service_endpoints_by_network_as_json_string = dump_as_json_string(service_endpoints_by_network)
-print(service_endpoints_by_network_as_json_string)
 
 # 2. get all service endpoints a service should reach
 service_endpoints_by_service = group_by(lambda x: x.service_id, network_endpoints)
@@ -135,9 +112,10 @@ for service_id, endpoints_to_reach in service_endpoints_service_should_reach.ite
 
 
 
-print(ContainerNetworkTable.schema().dumps(container_network_tables, indent=4, many=True))
+container_network_tables_by_node_id = group_by(lambda x: x.node_id, container_network_tables)
 
 PROXY_SERVICE_NAME = 'proxies_socket_proxy'
+DNS_CHECK_CONTAINER_IMAGE = 'dnscheck:debug'
 
 answer = dns.resolver.resolve(f'tasks.{PROXY_SERVICE_NAME}', 'A')
 for rdata in answer:
@@ -145,12 +123,36 @@ for rdata in answer:
     try:
       info = client.info()
 
-      print(info)
+      node_id = info["Swarm"]["NodeID"]
 
-      # node_id = info["Swarm"]["NodeID"]
-      # os.execvpe('/usr/local/bin/docker', ['/usr/local/bin/docker', 'exec', *FLAGS, CONTAINER_ID, *sys.argv[1:]], env={
-      #     'DOCKER_HOST': 'tcp://' + str(rdata.address) + ':2375'
-      # })
+      container_network_tables_for_node_id = container_network_tables_by_node_id[node_id]
+      for container_network_table in container_network_tables_for_node_id:
+        # print(container_network_tables_for_node_id)
+        res = subprocess.run(
+          [
+            "docker",
+            "run",
+            "--network",
+            f"container:{container_network_table.container_id}",
+            "--env",
+            f"DEBUG={DEBUG}",
+            "--env",
+            f"CONTAINER_NETWORK_TABLE={container_network_table.to_json()}",
+            "--rm",
+            DNS_CHECK_CONTAINER_IMAGE,
+            # cmd
+            "dnscheck"
+          ],
+          # result output
+          stdout=subprocess.PIPE,
+          # debug output
+          stderr=subprocess.PIPE,
+          text=True,
+          check=True
+        )
+        
+        check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
+        print(check_result)
     except Exception as e:
       traceback.print_exc()
     finally:

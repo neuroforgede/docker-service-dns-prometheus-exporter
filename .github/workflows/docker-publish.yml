@@ -26,7 +26,6 @@ jobs:
       fail-fast: false
       matrix:
         program:
-        - orchestrator
         - dnscheck
 
 
