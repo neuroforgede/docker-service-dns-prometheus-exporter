@@ -153,7 +153,7 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
           and task["Status"]["State"] == "running"
       ]
 
-    # 3. discover all docker hosts via swarm proxy
+    # 3. discover all tasks of services and construct their network table
     container_network_tables: List[ContainerNetworkTable] = []
     for service_id, endpoints_to_reach in service_endpoints_service_should_reach.items():
       service = from_env.services.get(service_id)
