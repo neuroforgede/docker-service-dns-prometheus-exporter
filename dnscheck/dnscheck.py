@@ -15,18 +15,29 @@ class ServiceEndpoint:
   aliases: List[str]
 
 
+@dataclass_json
+@dataclass
+class ContainerNetworkTable:
+  service_id: str
+  service_name: str
+  container_id: str
+  node_id: str
+  service_endpoints_to_reach: List[ServiceEndpoint]
+
+
 service_endpoints_to_find_str: str = os.environ['SERVICE_ENDPOINTS_TO_FIND']
 
 service_endpoints_to_find: List[ServiceEndpoint] = ServiceEndpoint.schema().loads(service_endpoints_to_find_str, many=True)
+print(service_endpoints_to_find)
 
-def can_find_dns_entry(dns_entry: str) -> bool:
-    answer = dns.resolver.resolve(dns_entry, 'A')
-    for _ in answer:    
-        return True
-    print(f"didn't find entry for {dns_entry}")
-    return False
+# def can_find_dns_entry(dns_entry: str) -> bool:
+#     answer = dns.resolver.resolve(dns_entry, 'A')
+#     for _ in answer:    
+#         return True
+#     print(f"didn't find entry for {dns_entry}")
+#     return False
 
-for service_endpoint_to_find in service_endpoints_to_find:
-    found_dns_tasks = can_find_dns_entry(service_endpoint_to_find.service_name)
-    #
+# for service_endpoint_to_find in service_endpoints_to_find:
+#     found_dns_tasks = can_find_dns_entry(service_endpoint_to_find.service_name)
+#     #
         

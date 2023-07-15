@@ -6,6 +6,9 @@ from dataclasses_json import dataclass_json
 from functools import reduce
 from collections import defaultdict
 import json
+import dns.resolver
+import os
+import traceback
 
 T = TypeVar('T')
 K = TypeVar('K')
@@ -133,6 +136,28 @@ for service_id, endpoints_to_reach in service_endpoints_service_should_reach.ite
 
 
 print(ContainerNetworkTable.schema().dumps(container_network_tables, indent=4, many=True))
+
+PROXY_SERVICE_NAME = 'proxies_socket_proxy'
+
+answer = dns.resolver.resolve(f'tasks.{PROXY_SERVICE_NAME}', 'A')
+for rdata in answer:
+    client = docker.DockerClient(base_url=f'tcp://{rdata.address}:2375')
+    try:
+      info = client.info()
+
+      print(info)
+
+      # node_id = info["Swarm"]["NodeID"]
+      # os.execvpe('/usr/local/bin/docker', ['/usr/local/bin/docker', 'exec', *FLAGS, CONTAINER_ID, *sys.argv[1:]], env={
+      #     'DOCKER_HOST': 'tcp://' + str(rdata.address) + ':2375'
+      # })
+    except Exception as e:
+      traceback.print_exc()
+    finally:
+      try:
+        client.close()
+      except Exception as e:
+        traceback.print_exc()
 
 # next: go to the nodes and run the check
 # careful: this relies on the network we are testing to see if it works
