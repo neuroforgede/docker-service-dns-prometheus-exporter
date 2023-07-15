@@ -11,6 +11,10 @@ def main() -> None:
   container_network_table_str: str = os.environ['CONTAINER_NETWORK_TABLE']
   container_network_table: ContainerNetworkTable = ContainerNetworkTable.schema().loads(container_network_table_str)
 
+
+  if DEBUG:
+    print(f"Checking network reachability from {container_network_table.service_name} (service_id: {container_network_table.service_id}, container_id: {container_network_table.container_id})")
+
   def can_find_dns_entry(dns_entry: str) -> bool:
     try:
       answer = dns.resolver.resolve(dns_entry, 'A')
@@ -32,7 +36,7 @@ def main() -> None:
 
   for service_endpoint_to_find in container_network_table.service_endpoints_to_reach:
     if DEBUG:
-      print(f"checking: {service_endpoint_to_find.service_name} ({service_endpoint_to_find.service_id})", file=sys.stderr)
+      print(f"checking: {service_endpoint_to_find.service_name} (service_id: {container_network_table.service_id}, container_id: {container_network_table.container_id})", file=sys.stderr)
     cur_result = ServiceEndpointCheckResult(
       service_name=service_endpoint_to_find.service_name,
       service_id=service_endpoint_to_find.service_id,
