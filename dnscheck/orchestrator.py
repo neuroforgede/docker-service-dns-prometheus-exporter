@@ -225,6 +225,28 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
             if res.returncode == 0:
               check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
               ret.append(check_result)
+            else:
+              check_result = ContainerNetworkTableResult(
+                container_id=container_network_table.container_id,
+                node_id=container_network_table.node_id,
+                service_id=container_network_table.service_id,
+                service_name=container_network_table.service_name,
+                results=[
+                  ServiceEndpointCheckResult(
+                    service_id=elem.service_id,
+                    service_name=elem.service_name,
+                    network_id=elem.network_id,
+                    expected_addr=elem.addr,
+                    alias_results=[
+                      AliasResult(
+                        alias=alias,
+                        success=False,
+                        message="failed to run dns healthcheck"
+                      ) for alias in elem.aliases
+                    ]
+                  ) for elem in container_network_table.service_endpoints_to_reach
+                ]
+              )
         except Exception as e:
           traceback.print_exc()
         finally:
