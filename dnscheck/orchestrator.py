@@ -205,7 +205,8 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
               stderr=subprocess.PIPE,
               text=True,
               env={
-                'DOCKER_HOST': 'tcp://' + str(rdata.address) + ':2375'
+                'DOCKER_HOST': 'tcp://' + str(rdata.address) + ':2375',
+                **os.environ
               }
             )
 
