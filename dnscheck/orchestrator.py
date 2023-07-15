@@ -92,19 +92,37 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
     network_endpoints: List[ServiceEndpoint] = []
     network_aliases: List[NetworkAlias] = []
 
+    def get_running_tasks(service):
+      return [
+          task
+          for task in service.tasks()
+          if  "Spec" in task 
+          and "DesiredState" in task
+          and task["DesiredState"] == "running"
+          and "Status" in task
+          and "State" in task["Status"]
+          and task["Status"]["State"] == "running"
+      ]
+
+
     for service in services:
-      service_id=service.attrs["ID"]
+      service_id = service.attrs["ID"]
       service_spec = service.attrs["Spec"]
       task_template = service_spec["TaskTemplate"]
       if "Networks" in task_template:
-        for network in task_template["Networks"]:
-          network_id = network["Target"]
-          network_aliases.append(NetworkAlias(
-            service_id=service.attrs["ID"],
-            service_name=service_spec["Name"],
-            network_id=network_id,
-            aliases=[service_spec["Name"], *network.get("Aliases", [])],
-          ))
+        running_tasks = get_running_tasks(service)
+        if len(running_tasks) > 0:
+          # ignore containers that are not started yet
+          # mostly relevant for oneshot containers
+          # with a restart condition that lets them act as a cronjob
+          for network in task_template["Networks"]:
+            network_id = network["Target"]
+            network_aliases.append(NetworkAlias(
+              service_id=service.attrs["ID"],
+              service_name=service_spec["Name"],
+              network_id=network_id,
+              aliases=[service_spec["Name"], *network.get("Aliases", [])],
+            ))
       
     network_aliases_by_service_and_network = group_by(lambda x: (x.service_id, x.network_id), network_aliases)
 
@@ -140,18 +158,6 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
       for elem in network_endpoints_for_service:
         for service_endpoint in service_endpoints_by_network[elem.network_id]:
           service_endpoints_service_should_reach[service_id].append(service_endpoint)
-
-    def get_running_tasks(service):
-      return [
-          task
-          for task in service.tasks()
-          if  "Spec" in task 
-          and "DesiredState" in task
-          and task["DesiredState"] == "running"
-          and "Status" in task
-          and "State" in task["Status"]
-          and task["Status"]["State"] == "running"
-      ]
 
     # 3. discover all tasks of services and construct their network table
     container_network_tables: List[ContainerNetworkTable] = []
