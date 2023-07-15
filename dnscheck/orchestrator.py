@@ -214,13 +214,14 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
               print(f"ERROR: subprocess failed with exit code: {res.returncode}")
               print(f"       commands: {res.args}")
 
-            if DEBUG:
-              print("STDOUT: ")
-              print(res.stdout)
+              if DEBUG:
+                print("STDOUT: ")
+                print(res.stdout)
 
-            if DEBUG:
-              print("STDERR: ")
-              print(res.stderr)
+              if DEBUG:
+                print("STDERR: ")
+                print(res.stderr)
+
 
             if res.returncode == 0:
               check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
@@ -247,6 +248,7 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
                   ) for elem in container_network_table.service_endpoints_to_reach
                 ]
               )
+              ret.append(check_result)
         except Exception as e:
           traceback.print_exc()
         finally:
