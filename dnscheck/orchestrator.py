@@ -218,8 +218,9 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
               print("STDERR: ")
               print(res.stderr)
 
-            check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
-            ret.append(check_result)
+            if res.returncode == 0:
+              check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
+              ret.append(check_result)
         except Exception as e:
           traceback.print_exc()
         finally:
