@@ -313,6 +313,8 @@ def loop() -> None:
     labels_to_remove = old_known_labels.keys() - new_known_labels.keys()
 
     for label_key in labels_to_remove:
+      if DEBUG:
+        print_timed(f"cleaning up prometheus labels (label_key={label_key}, labels={old_known_labels[label_key]})")
       DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS.remove(**old_known_labels[label_key])
     
     exit_event.wait(SCRAPE_INTERVAL)
