@@ -279,7 +279,7 @@ def loop() -> None:
   while not exit_event.is_set():
     if DEBUG:
       print_timed(f'before run - known Labels: {KNOWN_LABELS}')
-      
+
     container_network_table_results = check_dns_in_cluster()
 
     old_known_labels = KNOWN_LABELS
@@ -303,7 +303,7 @@ def loop() -> None:
 
             'target_alias_result_alias': alias_result.alias
           }
-          frozen_labels = frozenset(labels)
+          frozen_labels = frozenset(labels.items())
 
           new_known_labels[frozen_labels] = labels
 
