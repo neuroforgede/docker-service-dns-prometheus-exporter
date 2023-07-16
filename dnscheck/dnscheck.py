@@ -45,7 +45,7 @@ def main() -> None:
       alias_results=[]
     )
     for alias in service_endpoint_to_find.aliases:
-      found_dns_tasks = can_find_dns_entry(alias)
+      found_dns_tasks = can_find_dns_entry(alias) and can_find_dns_entry(f'tasks.{alias}')
       cur_result.alias_results.append(AliasResult(
         alias=alias,
         success=found_dns_tasks,

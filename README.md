@@ -1,6 +1,6 @@
 # docker-service-dns-prometheus-exporter
 
-Monitor your Docker Swarm for DNS resolution errors and export it to Prometheus.
+Monitor your Docker Swarm for DNS resolution errors and export it to Prometheus. Currently only supports VIP based routing DNS checks.
 
 ## Use in a Docker Swarm deployment
 

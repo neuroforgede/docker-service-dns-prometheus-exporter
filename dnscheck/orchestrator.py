@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import docker
-from typing import Dict, List, TypeVar, Callable, Any
+from docker.models import services as docker_services
+from typing import Dict, List, TypeVar, Callable, Any, Tuple
 from functools import reduce
 from collections import defaultdict
 import json
@@ -86,102 +87,161 @@ def print_timed(msg):
 PROXY_SERVICE_NAME = os.environ['PROXY_SERVICE_NAME']
 DNS_CHECK_CONTAINER_IMAGE = os.getenv('DNS_CHECK_CONTAINER_IMAGE', 'ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:main')
 
+def get_running_tasks(service: List[docker_services.Service]) -> List[Any]:
+  return [
+      task
+      for task in service.tasks()
+      if  "Spec" in task 
+      and "DesiredState" in task
+      and task["DesiredState"] == "running"
+      and "Status" in task
+      and "State" in task["Status"]
+      and task["Status"]["State"] == "running"
+  ]
+
+
+def get_network_aliases_by_service_and_network(services: List[docker_services.Service]) -> Dict[Tuple[str, str], List[NetworkAlias]]:
+  network_aliases: List[NetworkAlias] = []
+  for service in services:
+    service_id = service.attrs["ID"]
+    service_spec = service.attrs["Spec"]
+    task_template = service_spec["TaskTemplate"]
+    running_tasks = get_running_tasks(service)
+    if len(running_tasks) == 0:
+      continue
+    if "Networks" in task_template:
+        # ignore containers that are not started yet
+        # mostly relevant for oneshot containers
+        # with a restart condition that lets them act as a cronjob
+        for network in task_template["Networks"]:
+          network_id = network["Target"]
+          network_aliases.append(NetworkAlias(
+            service_id=service.attrs["ID"],
+            service_name=service_spec["Name"],
+            network_id=network_id,
+            aliases=[service_spec["Name"], *network.get("Aliases", [])],
+          ))
+    
+  ret = group_by(lambda x: (x.service_id, x.network_id), network_aliases)
+  return ret
+
+
+def get_service_endpoints_by_network(
+    services: List[docker_services.Service],
+    network_aliases_by_service_and_network: Dict[Tuple[str, str], List[NetworkAlias]]
+  ) -> Dict[str, List[ServiceEndpoint]]:
+  """
+    get all reachable services and create Service Endpoints for every relevant one
+    we try to filter out services that are not checkable.
+    These include services that dont have a valid DNS entry
+    or services that don't have a virtual IP.
+    While dnsrr services might be releavnt for DNS checks as well, these services are
+    much more complex in their behaviour. At the moment, we don't want to
+    generate a list of all IPs that should match the DNS.
+  """
+  service_endpoints: List[ServiceEndpoint] = []
+  for service in services:
+    service_id = service.attrs["ID"]
+    service_spec = service.attrs["Spec"]
+    if "Endpoint" in service.attrs:
+      service_endpoint = service.attrs["Endpoint"]
+      if "VirtualIPs" in service_endpoint:
+        for virtual_ip in service_endpoint["VirtualIPs"]:
+          if "Addr" not in virtual_ip:
+            continue
+          aliases = network_aliases_by_service_and_network[(service_id, virtual_ip["NetworkID"])]
+          if len(aliases) == 0:
+            # ingress network, or no running tasks
+            continue
+          service_endpoints.append(ServiceEndpoint(
+            service_id=service.attrs["ID"],
+            service_name=service_spec["Name"],
+            network_id=virtual_ip["NetworkID"],
+            addr=virtual_ip["Addr"],
+            aliases=[item for alias in aliases for item in alias.aliases]
+          ))
+  ret = group_by(lambda x: x.network_id, service_endpoints)
+  return ret
+
+
+def get_service_endpoints_service_should_reach(
+    services: List[docker_services.Service],
+    service_endpoints_by_network: Dict[str, List[ServiceEndpoint]]
+) -> Dict[str, List[ServiceEndpoint]]:
+    """
+      for each service with running tasks construct a list of endpoints it should
+      reach by looking at all networks it is part of and then adding the relevant
+      service_endpoints to its list
+    """
+    service_endpoints_service_should_reach: Dict[str, List[ServiceEndpoint]] = defaultdict(list)
+    for service in services:
+      service_id = service.attrs["ID"]
+      service_spec = service.attrs["Spec"]
+      task_template = service_spec["TaskTemplate"]
+      running_tasks = get_running_tasks(service)
+      if len(running_tasks) == 0:
+        continue
+      if "Networks" in task_template:
+        for network in task_template["Networks"]:
+          network_id = network["Target"]
+          for service_endpoint in service_endpoints_by_network[network_id]:
+            service_endpoints_service_should_reach[service_id].append(service_endpoint)
+    return service_endpoints_service_should_reach
+
+
+def get_network_tables(
+    docker_client: docker.DockerClient,
+    service_endpoints_service_should_reach: Dict[str, List[ServiceEndpoint]]
+  ) -> List[ContainerNetworkTable]:
+  """
+    discover all tasks of services and construct their network table
+  """
+  container_network_tables: List[ContainerNetworkTable] = []
+  for service_id, endpoints_to_reach in service_endpoints_service_should_reach.items():
+    service = docker_client.services.get(service_id)
+    service_name = service.attrs["Spec"]["Name"]
+    running_tasks = get_running_tasks(service)
+    for task in running_tasks:
+      container_id = task["Status"]["ContainerStatus"]["ContainerID"]
+      node_id = task["NodeID"]
+      container_network_tables.append(ContainerNetworkTable(
+        service_id=service_id,
+        service_name=service_name,
+        container_id=container_id,
+        node_id=node_id,
+        service_endpoints_to_reach=list(endpoints_to_reach)
+      ))
+  return container_network_tables
+
+
 def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
   ret: List[ContainerNetworkTableResult] = []
   from_env = docker.from_env(use_ssh_client=True)
   try:
     services = from_env.services.list()
 
-    network_endpoints: List[ServiceEndpoint] = []
-    network_aliases: List[NetworkAlias] = []
+    network_aliases_by_service_and_network = get_network_aliases_by_service_and_network(services)
 
-    def get_running_tasks(service):
-      return [
-          task
-          for task in service.tasks()
-          if  "Spec" in task 
-          and "DesiredState" in task
-          and task["DesiredState"] == "running"
-          and "Status" in task
-          and "State" in task["Status"]
-          and task["Status"]["State"] == "running"
-      ]
+    service_endpoints_by_network = get_service_endpoints_by_network(
+      services=services,
+      network_aliases_by_service_and_network=network_aliases_by_service_and_network
+    )
 
+    service_endpoints_service_should_reach = get_service_endpoints_service_should_reach(
+      services=services,
+      service_endpoints_by_network=service_endpoints_by_network
+    )
 
-    for service in services:
-      service_id = service.attrs["ID"]
-      service_spec = service.attrs["Spec"]
-      task_template = service_spec["TaskTemplate"]
-      if "Networks" in task_template:
-        running_tasks = get_running_tasks(service)
-        if len(running_tasks) > 0:
-          # ignore containers that are not started yet
-          # mostly relevant for oneshot containers
-          # with a restart condition that lets them act as a cronjob
-          for network in task_template["Networks"]:
-            network_id = network["Target"]
-            network_aliases.append(NetworkAlias(
-              service_id=service.attrs["ID"],
-              service_name=service_spec["Name"],
-              network_id=network_id,
-              aliases=[service_spec["Name"], *network.get("Aliases", [])],
-            ))
-      
-    network_aliases_by_service_and_network = group_by(lambda x: (x.service_id, x.network_id), network_aliases)
+    container_network_tables = get_network_tables(
+      docker_client=from_env,
+      service_endpoints_service_should_reach=service_endpoints_service_should_reach
+    )
 
-    for service in services:
-      service_id=service.attrs["ID"]
-      service_spec = service.attrs["Spec"]
-      if "Endpoint" in service.attrs:
-        service_endpoint = service.attrs["Endpoint"]
-        if "VirtualIPs" in service_endpoint:
-          for virtual_ip in service_endpoint["VirtualIPs"]:
-            if "Addr" not in virtual_ip:
-              continue
-            aliases = network_aliases_by_service_and_network[(service_id, virtual_ip["NetworkID"])]
-            if len(aliases) == 0:
-              # ingress network
-              continue
-            network_endpoints.append(ServiceEndpoint(
-              service_id=service.attrs["ID"],
-              service_name=service_spec["Name"],
-              network_id=virtual_ip["NetworkID"],
-              addr=virtual_ip["Addr"],
-              aliases=[item for alias in aliases for item in alias.aliases]
-            ))
-
-
-    # 1. get all service endpoints per network
-    service_endpoints_by_network = group_by(lambda x: x.network_id, network_endpoints)
-
-    # 2. get all service endpoints a service should reach
-    service_endpoints_by_service = group_by(lambda x: x.service_id, network_endpoints)
-    service_endpoints_service_should_reach: Dict[str, List[ServiceEndpoint]] = defaultdict(list)
-    for service_id, network_endpoints_for_service in service_endpoints_by_service.items():
-      for elem in network_endpoints_for_service:
-        for service_endpoint in service_endpoints_by_network[elem.network_id]:
-          service_endpoints_service_should_reach[service_id].append(service_endpoint)
-
-    # 3. discover all tasks of services and construct their network table
-    container_network_tables: List[ContainerNetworkTable] = []
-    for service_id, endpoints_to_reach in service_endpoints_service_should_reach.items():
-      service = from_env.services.get(service_id)
-      service_name = service.attrs["Spec"]["Name"]
-      running_tasks = get_running_tasks(service)
-      for task in running_tasks:
-        container_id = task["Status"]["ContainerStatus"]["ContainerID"]
-        node_id = task["NodeID"]
-        container_network_tables.append(ContainerNetworkTable(
-          service_id=service_id,
-          service_name=service_name,
-          container_id=container_id,
-          node_id=node_id,
-          service_endpoints_to_reach=list(endpoints_to_reach)
-        ))
-
+    # group network tables by node id so we can do the lookup per node
     container_network_tables_by_node_id = group_by(lambda x: x.node_id, container_network_tables)
 
-    # 4. connect to all available docker hosts and run the check
+    # finally, connect to all available docker hosts and run the check
+    # FIXME: if we don't find the docker host for the a node, mark all containers as failed?
     answer = dns.resolver.resolve(f'tasks.{PROXY_SERVICE_NAME}', 'A')
     for rdata in answer:
         client = docker.DockerClient(base_url=f'tcp://{rdata.address}:2375')
@@ -236,7 +296,7 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
             if res.returncode == 0:
               check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
               ret.append(check_result)
-            elif 'cannot join network of a non running container' not in res.stdout:
+            elif 'cannot join network of a non running container' not in res.stderr:
               check_result = ContainerNetworkTableResult(
                 container_id=container_network_table.container_id,
                 node_id=container_network_table.node_id,
