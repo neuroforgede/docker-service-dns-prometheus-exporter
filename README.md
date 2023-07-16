@@ -44,10 +44,10 @@ services:
       mode: global
 
   docker-service-dns-prometheus-exporter:
-    image: ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:0.1.11
+    image: ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:latest
     environment:
       - PROXY_SERVICE_NAME=monitoring_docker_socket_proxy
-      - DNS_CHECK_CONTAINER_IMAGE=ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:0.1.11
+      - DNS_CHECK_CONTAINER_IMAGE=ghcr.io/neuroforgede/docker-service-dns-prometheus-exporter/dnscheck:latest
       - DEBUG=true
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
