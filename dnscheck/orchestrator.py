@@ -277,10 +277,10 @@ def loop() -> None:
   global KNOWN_LABELS
 
   while not exit_event.is_set():
-    container_network_table_results = check_dns_in_cluster()
-
     if DEBUG:
       print_timed(f'before run - known Labels: {KNOWN_LABELS}')
+      
+    container_network_table_results = check_dns_in_cluster()
 
     old_known_labels = KNOWN_LABELS
     new_known_labels = dict()
