@@ -234,7 +234,7 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
             if res.returncode == 0:
               check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
               ret.append(check_result)
-            else:
+            elif 'cannot join network of a non running container' not in res.stdout:
               check_result = ContainerNetworkTableResult(
                 container_id=container_network_table.container_id,
                 node_id=container_network_table.node_id,
