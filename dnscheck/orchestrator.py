@@ -76,7 +76,7 @@ KNOWN_LABELS = dict()
 def print_timed(msg):
     to_print = '{} [{}]: {}'.format(
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'docker_events',
+        'docker-service-dns-prometheus-exporter',
         msg)
     print(to_print)
 
@@ -279,6 +279,9 @@ def loop() -> None:
   while not exit_event.is_set():
     container_network_table_results = check_dns_in_cluster()
 
+    if DEBUG:
+      print_timed(f'before run - known Labels: {KNOWN_LABELS}')
+
     old_known_labels = KNOWN_LABELS
     new_known_labels = dict()
 
@@ -309,6 +312,9 @@ def loop() -> None:
           )
 
     KNOWN_LABELS = new_known_labels
+
+    if DEBUG:
+      print_timed(f'after run - known Labels: {KNOWN_LABELS}')
 
     labels_to_remove = old_known_labels.keys() - new_known_labels.keys()
 
