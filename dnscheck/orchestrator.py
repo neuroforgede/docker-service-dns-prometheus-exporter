@@ -40,11 +40,7 @@ def handle_shutdown(signal: Any, frame: Any) -> None:
 signal.signal(signal.SIGINT, handle_shutdown)
 signal.signal(signal.SIGTERM, handle_shutdown)
 
-
-APP_NAME = "Docker DNS Check Exporter"
-DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS = Gauge('docker_service_dns_resolution_success',
-  'Docker Service DNS Resolution Success',
-  [
+docker_service_dns_resolution_success_labels = [
     'docker_hostname',
 
     'source_service_id',
@@ -59,6 +55,11 @@ DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS = Gauge('docker_service_dns_resolution_suc
 
     'target_alias_result_alias'
   ]
+
+APP_NAME = "Docker DNS Check Exporter"
+DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS = Gauge('docker_service_dns_resolution_success',
+  'Docker Service DNS Resolution Success',
+  docker_service_dns_resolution_success_labels
 )
 PROMETHEUS_EXPORT_PORT = int(os.getenv('PROMETHEUS_EXPORT_PORT', '9000'))
 DOCKER_HOSTNAME = os.getenv('DOCKER_HOSTNAME', platform.node())
@@ -322,7 +323,8 @@ def loop() -> None:
     for label_key in labels_to_remove:
       if DEBUG:
         print_timed(f"cleaning up prometheus labels (label_key={label_key}, labels={old_known_labels[label_key]})")
-      DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS.remove(**old_known_labels[label_key])
+      values = old_known_labels[label_key]
+      DOCKER_SERVICE_DNS_RESOLUTION_SUCCESS.remove(*[values[label_elem] for label_elem in docker_service_dns_resolution_success_labels])
     
     exit_event.wait(SCRAPE_INTERVAL)
 
