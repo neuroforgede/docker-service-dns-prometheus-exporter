@@ -70,6 +70,7 @@ MAX_RETRIES_IN_ROW = int(os.getenv('MAX_RETRIES_IN_ROW', '10'))
 
 
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+DEBUG_DUMP_LABELS = os.environ.get('DEBUG_DUMP_LABELS', 'false').lower() == 'true'
 
 KNOWN_LABELS = dict()
 
@@ -277,7 +278,7 @@ def loop() -> None:
   global KNOWN_LABELS
 
   while not exit_event.is_set():
-    if DEBUG:
+    if DEBUG and DEBUG_DUMP_LABELS:
       print_timed(f'before run - known Labels: {KNOWN_LABELS}')
 
     container_network_table_results = check_dns_in_cluster()
@@ -313,7 +314,7 @@ def loop() -> None:
 
     KNOWN_LABELS = new_known_labels
 
-    if DEBUG:
+    if DEBUG and DEBUG_DUMP_LABELS:
       print_timed(f'after run - known Labels: {KNOWN_LABELS}')
 
     labels_to_remove = old_known_labels.keys() - new_known_labels.keys()
