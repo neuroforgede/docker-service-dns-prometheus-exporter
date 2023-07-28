@@ -23,11 +23,11 @@ from contract import *
 import yaml
 import re
 
-REGEX_IGNORE_LIST: List[str] = yaml.safe_load(os.getenv('REGEX_IGNORE_LIST', '[]'))
+SERVICE_REGEX_IGNORE_LIST: List[str] = yaml.safe_load(os.getenv('SERVICE_REGEX_IGNORE_LIST', '[]'))
 
 def is_service_relevant(service_name: str) -> bool:
-  if REGEX_IGNORE_LIST is not None and isinstance(list, REGEX_IGNORE_LIST):
-    for regex in REGEX_IGNORE_LIST:
+  if SERVICE_REGEX_IGNORE_LIST is not None and isinstance(list, SERVICE_REGEX_IGNORE_LIST):
+    for regex in SERVICE_REGEX_IGNORE_LIST:
       match = re.match(regex, service_name)
       if match is not None:
         return False
