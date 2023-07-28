@@ -20,6 +20,18 @@ from threading import Event
 import signal
 
 from contract import *
+import yaml
+import re
+
+REGEX_IGNORE_LIST: List[str] = yaml.safe_load(os.getenv('REGEX_IGNORE_LIST', '[]'))
+
+def is_service_relevant(service_name: str) -> bool:
+  if REGEX_IGNORE_LIST is not None and isinstance(list, REGEX_IGNORE_LIST):
+    for regex in REGEX_IGNORE_LIST:
+      match = re.match(regex, service_name)
+      if match is not None:
+        return False
+  return True
 
 T = TypeVar('T')
 K = TypeVar('K')
@@ -219,6 +231,7 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
   from_env = docker.from_env(use_ssh_client=True)
   try:
     services = from_env.services.list()
+    services = [service for service in services if is_service_relevant(service.attrs["Spec"]["Name"])]
 
     network_aliases_by_service_and_network = get_network_aliases_by_service_and_network(services)
 
@@ -253,7 +266,6 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
           container_network_tables_for_node_id = container_network_tables_by_node_id[node_id]
           for container_network_table in container_network_tables_for_node_id:
             print_timed(f'Checking Container {container_network_table.container_id} (service_name={container_network_table.service_name}, service_id={container_network_table.service_id}, container_id={container_network_table.container_id}, node_id={container_network_table.node_id})')
-            # print(container_network_tables_for_node_id)
             res = subprocess.run(
               [
                 "docker",

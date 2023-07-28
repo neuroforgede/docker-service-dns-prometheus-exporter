@@ -3,3 +3,4 @@ docker
 paramiko
 dnspython
 prometheus-client
+pyyaml
