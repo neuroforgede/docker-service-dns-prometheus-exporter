@@ -26,7 +26,7 @@ import re
 SERVICE_REGEX_IGNORE_LIST: List[str] = yaml.safe_load(os.getenv('SERVICE_REGEX_IGNORE_LIST', '[]'))
 
 def is_service_relevant(service_name: str) -> bool:
-  if SERVICE_REGEX_IGNORE_LIST is not None and isinstance(list, SERVICE_REGEX_IGNORE_LIST):
+  if SERVICE_REGEX_IGNORE_LIST is not None and isinstance(SERVICE_REGEX_IGNORE_LIST, list):
     for regex in SERVICE_REGEX_IGNORE_LIST:
       match = re.match(regex, service_name)
       if match is not None:
