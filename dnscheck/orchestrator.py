@@ -306,8 +306,11 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
 
 
             if res.returncode == 0:
-              check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
-              ret.append(check_result)
+              try:
+                check_result = ContainerNetworkTableResult.schema().loads(res.stdout)
+                ret.append(check_result)
+              except json.decoder.JSONDecodeError:
+                print("failed to parse into ContainerNetworkTableResult " + res.stdout)
             elif 'cannot join network of a non running container' not in res.stderr:
               check_result = ContainerNetworkTableResult(
                 container_id=container_network_table.container_id,
