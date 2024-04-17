@@ -270,6 +270,9 @@ def check_dns_in_cluster() -> List[ContainerNetworkTableResult]:
               [
                 "docker",
                 "run",
+                # use log driver local to improve log output situation on non default log drivers #5
+                "--log-driver",
+                "local",
                 "--network",
                 f"container:{container_network_table.container_id}",
                 "--env",
